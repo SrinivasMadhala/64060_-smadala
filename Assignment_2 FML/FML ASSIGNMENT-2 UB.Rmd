@@ -1,0 +1,130 @@
+---
+title: "Assignment_2 FML"
+author: "Srinivasarao Madala"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup}
+#importing the required packages 
+library('caret')
+library('ISLR')
+library('dplyr')
+library('class')
+
+```
+```{r}
+UniversalBankData <- read.csv("C:/Users/msrin/Documents/FML Assignments/UniversalBank.csv", sep = ',' )
+
+UniversalBankData$ID <- NULL
+UniversalBankData$ZIP.Code <- NULL
+summary(UniversalBankData)
+```
+
+```{r}
+#Ignoring the "ID" and "ZIP Code" columns in a new data collection
+
+
+UniversalBankData$Personal.Loan =  as.factor(UniversalBankData$Personal.Loan)
+
+
+Normalized_model <- preProcess(UniversalBankData[, -8],method = c("center", "scale"))
+Bank_normalized <- predict(Normalized_model,UniversalBankData)
+summary(Bank_normalized)
+```
+```{r}
+#dividing the data so that 60% is used for training and 40% is used for testing
+
+Train_index <- createDataPartition(UniversalBankData$Personal.Loan, p = 0.6, list = FALSE)
+train.df = Bank_normalized[Train_index,]
+validation.df = Bank_normalized[-Train_index,]
+```
+
+```{r}
+#Prediction 
+To_Predict = data.frame(Age = 40, Experience = 10, Income = 84, Family = 2,
+                        CCAvg = 2, Education = 1, Mortgage = 0, Securities.Account =
+                          0, CD.Account = 0, Online = 1, CreditCard = 1)
+print(To_Predict)
+```
+
+```{r}
+To_Predict_Normalized <- predict(Normalized_model,To_Predict)
+Prediction <- knn(train= train.df[, 1:10,11:11],
+                  test = To_Predict_Normalized[,1:10,11:11],
+                  cl=train.df$Personal.Loan,
+                  k=1
+                  )
+print(Prediction)
+```
+
+
+```{r}
+#Task2
+
+#K=3 appears to be the optimal value of K that strikes a compromise between overfitting and neglecting predictive information.
+
+set.seed(123)
+Bankcontrol <- trainControl(method= "repeatedcv", number = 3, repeats = 2)
+searchGrid = expand.grid(k=1:10)
+
+knn.model = train(Personal.Loan~., data = train.df, method = 'knn', tuneGrid = searchGrid,trControl = Bankcontrol)
+
+knn.model
+```
+
+
+```{r}
+#Question 3
+#Confusion matrix for the Validation data
+
+predictions <- predict(knn.model,validation.df)
+
+confusionMatrix(predictions,validation.df$Personal.Loan)
+```
+
+```{r}
+#Question 4
+
+To_Predict_Normalization = data.frame(Age = 40, Experience = 10, Income = 84, Family = 2,
+                                   CCAvg = 2, Education = 1, Mortgage = 0,
+                                   Securities.Account =0, CD.Account = 0, Online = 1,
+                                   CreditCard = 1)
+To_Predict_Normalization = predict(Normalized_model, To_Predict)
+predict(knn.model, To_Predict_Normalization)
+```
+
+```{r}
+#Question 5
+#Dividing the data into 50% for training ,30%  for validation, 20% for test
+train_size = 0.5
+Train_index = createDataPartition(UniversalBankData$Personal.Loan, p = 0.5, list = FALSE)
+train.df = Bank_normalized[Train_index,]
+
+
+test_size = 0.2
+Test_index = createDataPartition(UniversalBankData$Personal.Loan, p = 0.2, list = FALSE)
+Test.df = Bank_normalized[Test_index,]
+
+
+valid_size = 0.3
+Validation_index = createDataPartition(UniversalBankData$Personal.Loan, p = 0.3, list = FALSE)
+validation.df = Bank_normalized[Validation_index,]
+
+
+
+Testknn <- knn(train = train.df[,-8], test = Test.df[,-8], cl = train.df[,8], k =3)
+Validationknn <- knn(train = train.df[,-8], test = validation.df[,-8], cl = train.df[,8], k =3)
+Trainknn <- knn(train = train.df[,-8], test = train.df[,-8], cl = train.df[,8], k =3)
+
+confusionMatrix(Testknn, Test.df[,8])
+confusionMatrix(Trainknn, train.df[,8])
+confusionMatrix(Validationknn, validation.df[,8])
+
+
+
+```
+
+#The accuracy of the training set is somewhat greater than the accuracy of the test and validation sets, which indicates that the algorithm is operating as intended.
+
